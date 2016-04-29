@@ -39,6 +39,19 @@ Required
 
 # Pipeline Description
 
+This software facilitates **A**verage **N**ucleotide **I**dentity calculation for any number of genome comparisons. This is accomplished in several steps:
+
+1. Generate BLAST DBs for all genomes.
+2. Divide genomes into 1020nt chunks.
+3. Use chunked genomes as queries against full length genomic BLAST DBs.
+4. Find shared genomic regions based on cut-offs (70% coverage, 30% identity, by default)
+5. Find average identity of all shared genomic regions.
+6. Repeat for any number of genomes.
+
+The location of the input files is saved so that you can repeat the analysis with different parameters. Furthermore, you can add new genomes to the analysis and re-use all of the prior calculations. 
+The input is a set of complete or draft genome sequences each contained within their own FASTA file.  
+The output is a tab-delimited file with all of the pairwise ANI values.
+
 # Usage
 
 This software is designed to be as straightforward to use as possible, with as minimal input as possible. Once the dependencies are installed, running autoANI.pl --help should provide a lengthy help message to remind you of all of the possible options with this software.
