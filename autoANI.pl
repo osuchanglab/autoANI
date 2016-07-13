@@ -515,7 +515,7 @@ my %results;
 my %tmpresults;
 my %genomes;
 
-my $analyze = 0;
+my $analyze = 1;
 
 if ( $analyze == 1 ) {
 
