@@ -68,18 +68,18 @@ my $outfile;
 my %matched;
 my $blasthitsfile;
 my $sge = 0;
-my $blast_v_check = qr/2.2.31|2.[3-9].[\d]|3.[\d].[\d]/;
+my $blast_v_check = qr/2.2.31|2.[3-9]+.[\d]|3.[\d]+.[\d]+/;
 
 my ( $svol, $sdir, $sfile ) = File::Spec->splitpath($0);
 $sdir .= "scripts/";
 
 my $program     = $blastbindir . 'blastn';
 my $makeblastdb = $blastbindir . 'makeblastdb';
-my $blastscript = $scriptdir . 'autoANI-blast.pl';
+#my $blastscript = $scriptdir . 'autoANI-blast.pl';
 my $elinkpath   = $scriptdir . 'auto_eutil.pl';
 
 if ( !$scriptdir ) {
-    $blastscript = $sdir . 'autoANI-blast.pl';
+#    $blastscript = $sdir . 'autoANI-blast.pl';
     $elinkpath   = $sdir . 'auto_eutil.pl';
 }
 
@@ -250,6 +250,7 @@ foreach my $infile (@infiles) {
         logger("Generating chunked file $file.$size");
         open my $fastaout, ">", "fasta/$file.$size"
           or die "$cwd/fasta/$file.$size is unavailble : $!";
+        my $count = 0;
         while ( my $seq = $in->next_seq() ) {
             my $name  = $seq->id;
             my $i     = 0;
@@ -278,8 +279,21 @@ foreach my $infile (@infiles) {
                 $i += $size;
                 $chunk++;
             }
+            $count = $chunk;
         }
         close $fastaout;
+
+        if ( $count == 0 ) {
+            logger("Unable to chunk file $file.\n");
+            logger("Check to ensure this file is a FASTA formatted file.\n");
+            exit(-1);
+        }
+
+        if ( ! -s "./fasta/$file.$size" ) {
+            logger("There was a problem generating the chunked file ./fasta/$file.$size.\n");
+            logger("Check to ensure your input file was in FASTA format and try again.\n");
+            exit(-1);
+        }
     }
 
     if (    ( -e "db/$file.nhr" )
@@ -372,28 +386,33 @@ if ( $finish == 0 ) {
                     if ( -e $output ) {
                         `rm -f $output`;
                     }
-                    my @command = join( " ",
-                                        $program,                 "-db",
-                                        qq{\\'\'$dbpath\'\\'},    "-query",
-                                        qq{\\'\'$querypath\'\\'}, "-outfmt",
-                                        $outfmt,                  "-evalue",
-                                        "0.001",  "-num_threads",
-                                        1,        "-max_target_seqs",
-                                        "1",      "-max_hsps",
-                                        "1",      "-task",
-                                        "blastn", "-xdrop_gap",
-                                        150,      "-penalty",
-                                        "-1",     "-reward",
-                                        1,        "-gapopen",
-                                        5,        "-gapextend",
-                                        2 );
+                    my @command = join( " ",                $program,                 
+                                        "-db",              qq{\\'\'$dbpath\'\\'},    
+                                        "-query",           qq{\\'\'$querypath\'\\'}, 
+                                        "-outfmt",          $outfmt,                  
+                                        "-evalue",          "0.001",   
+                                        "-num_threads",     1,         
+                                        "-max_target_seqs", "1",      
+                                        "-max_hsps",        "1",      
+                                        "-task",            "blastn", 
+                                        "-xdrop_gap",       150,      
+                                        "-penalty",         "-1",     
+                                        "-reward",          1,        
+                                        "-gapopen",         5,        
+                                        "-gapextend",       2);
                     logger("Running BLAST command:\n@command\n");
-                    @command = join( " ",
-                                     $blastscript, $coverage, $size,
-                                     $pid_cutoff, $output, @command );
+                    #@command = join( " ",
+                    #                 $blastscript, $coverage, $size,
+                    #                 $pid_cutoff, $output, @command );
 
                     if ( $sge == 0 ) {
-                        system(@command);
+                        my $check = system(@command);
+                        if ( $check != 0 || ! -s $output ) {
+                            logger("BLAST search between $query and $subject failed.\n");
+                            logger("Check your input files and try again.\n");
+                            exit(-1)
+                        }
+
                     } else {
                         @command = join( " ",
                                          "SGE_Batch",                "-r",
@@ -514,16 +533,35 @@ logger("Concatenating files started at $time\n");
 my %results;
 my %tmpresults;
 my %genomes;
+my $tmpfile = 'ani.out.tmp';
+my %seenfh;
+my %filenames;
 
-my $analyze = 1;
+if ( -s $tmpfile ) {
+    open my $tmpfh, "<", "$tmpfile" or die "Unable to open $tmpfile : $!\n";
+    while(<$tmpfh>) {
+        my $line = $_;
+        chomp($line);
+        my ($query, $subject, $ani, $hits, $file) = split("\t",$line);
+        if ($file) {
+            if (-s "./blast/$file") {
+                $seenfh{$file} = 1;
+            }
+        }
+        $tmpresults{$query}{$subject}{'ani'} = $ani;
+        $tmpresults{$query}{$subject}{'hits'} = $hits;
+    }
+}
 
-if ( $analyze == 1 ) {
+my @blastout = `find ./blast/ -type f -exec basename {} \;`;
 
-    open my $blast, "-|",
-      "find ./blast/ -type f -print | xargs cat "
-      or die "Unable to concatenate blast output : $!\n";
+foreach my $boutfile (sort @blastout) {
+    next if $seenfh{$boutfile};
 
-    #Analyze data
+    open my $blast, "<", "./blast/$boutfile"
+      or die "Unable to open blast output file $boutfile : $!\n";
+
+#Analyze data
 
     while (<$blast>) {
         my $line = $_;
@@ -558,6 +596,7 @@ if ( $analyze == 1 ) {
         $subject_genome = $idmatch{$sacc};
 
         $genomes{$query_genome} = 1;
+        $filenames{$query_genome}{$subject_genome} = $boutfile;
 
         if ( $query ne $subject ) {
             next
@@ -568,36 +607,36 @@ if ( $analyze == 1 ) {
     }
 
     close $blast;
-} else {
-
-    open my $tmpfile, "<", "ani.tmp"
-      or die "Unable to find temp file ani.tmp. Cannot calculate results!\n";
-
-    while (<$tmpfile>) {
-        my $line = $_;
-        chomp($line);
-        my ( $qacc, $sacc, $ani, $hits ) = split( "\t", $line );
-        my @accessions = ( $qacc, $sacc );
-
-        foreach my $accession (@accessions) {
-            if ( !defined( $idmatch{$accession} ) ) {
-                logger(
-                    "Unable to find assembly/identifier for accession $accession. Check ani.keys to make sure this value is found.\n"
-                );
-                exit(-1);
-            }
-        }
-
-        my $query_genome   = $idmatch{$qacc};
-        my $subject_genome = $idmatch{$sacc};
-
-        $genomes{$query_genome} = 1;
-
-        $tmpresults{$query_genome}{$subject_genome}{'hits'} = $hits;
-        $tmpresults{$query_genome}{$subject_genome}{'ani'}  = $ani;
-
-    }
 }
+#
+#    open my $tmpfile, "<", "ani.tmp"
+#      or die "Unable to find temp file ani.tmp. Cannot calculate results!\n";
+#
+#    while (<$tmpfile>) {
+#        my $line = $_;
+#        chomp($line);
+#        my ( $qacc, $sacc, $ani, $hits ) = split( "\t", $line );
+#        my @accessions = ( $qacc, $sacc );
+#
+#        foreach my $accession (@accessions) {
+#            if ( !defined( $idmatch{$accession} ) ) {
+#                logger(
+#                    "Unable to find assembly/identifier for accession $accession. Check ani.keys to make sure this value is found.\n"
+#                );
+#                exit(-1);
+#            }
+#        }
+#
+#        my $query_genome   = $idmatch{$qacc};
+#        my $subject_genome = $idmatch{$sacc};
+#
+#        $genomes{$query_genome} = 1;
+#
+#        $tmpresults{$query_genome}{$subject_genome}{'hits'} = $hits;
+#        $tmpresults{$query_genome}{$subject_genome}{'ani'}  = $ani;
+#
+#    }
+#}
 logger("Printing results\n");
 
 my $outfh;
@@ -643,6 +682,9 @@ foreach my $genome (@genomes) {
             my $n   = scalar( @{ $results{$genome}{$genome2} } );
             $sum += $_ for @{ $results{$genome}{$genome2} };
             $ani = sprintf( "%.3f", $sum / $n );
+            open my $tmpfh, ">", "ani.out.tmp" or die "Unable to open ani.out.tmp file : $!";
+            print $tmpfh join("\t",$genome,$genome2,$ani,$n,$filenames{$genome}{$genome2});
+            close $tmpfh;
         } elsif ( defined( $tmpresults{$genome}{$genome2} ) ) {
             $ani = sprintf( "%.3f", $tmpresults{$genome}{$genome2}{'ani'} );
             $n = $tmpresults{$genome}{$genome2}{'hits'};

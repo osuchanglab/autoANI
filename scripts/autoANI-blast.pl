@@ -43,74 +43,74 @@ my %genomes;
 
 my @output = `@command`;
 
-foreach my $line (@output) {
-    chomp($line);
-    next if ( $line =~ /#/ );
-    my @data      = split( "\t", $line );
-    my $query     = $data[0];
-    my $subject   = $data[1];
-    my $percentid = $data[2];
-    my $length    = $data[3];
-    $query =~ s/_[0-9]+(?=$)//;
-
-    my $qacc = get_accn($query);
-    my $sacc = get_accn($subject);
-
-    $qacc =~ s/\.[0-9]+//;
-    $sacc =~ s/\.[0-9]+//;
-
-    if ( $query ne $subject ) {
-        next
-          if (    $length < ( ( $coverage / 100 ) * $size )
-               || $percentid < $pid_cutoff );
-        push( @{ $results{$qacc}{$sacc} }, $percentid );
-    }
-
-}
-
-
-open my $tmpout, ">>", "ani.tmp" or die "Unable to open ani.tmp for writing!\n";
-
-foreach my $genome ( sort keys %results ) {
-    foreach my $subject ( sort keys %{ $results{$genome} } ) {
-        my ( $ani, $hits );
-        my $sum  = 0;
-        my @data = @{ $results{$genome}{$subject} };
-        if ( !@data ) {
-            $ani  = 'N/A';
-            $hits = 0;
-        } else {
-            $hits = @data;
-            $sum += $_ for @data;
-            $ani = $sum / $hits;
-        }
-        print $tmpout
-          join( "\t", $genome, $subject, sprintf( "%.3f", $ani ), $hits )
-          . "\n";
-    }
-}
-
-close $tmpout;
-
-sub get_accn {
-    my $name = shift;
-    my @split = split( '\|', $name );
-    if ( $name !~ /gnl/ ) {
-        my @accn_types = (
-                    qr/\A[A-Z][0-9]{5}(\.[0-9])?\Z/,
-                    qr/\A[A-Z]{2}_?[0-9]{6}(\.[0-9])?\Z/,
-                    qr/\A([A-Z]{2}_)?[A-Z]{4}[0-9]{8}([0-9]{1,2})?(\.[0-9])?\Z/,
-                    qr/\A[A-Z]{2}_[A-Z]{2}[0-9]{6}(\.[0-9])?\Z/
-        );
-        foreach my $data (@split) {
-            foreach my $type (@accn_types) {
-                if ( $data =~ $type ) {
-                    return $data;
-                }
-            }
-
-        }
-    } else {
-        return $split[1];
-    }
-}
+#foreach my $line (@output) {
+#    chomp($line);
+#    next if ( $line =~ /#/ );
+#    my @data      = split( "\t", $line );
+#    my $query     = $data[0];
+#    my $subject   = $data[1];
+#    my $percentid = $data[2];
+#    my $length    = $data[3];
+#    $query =~ s/_[0-9]+(?=$)//;
+#
+#    my $qacc = get_accn($query);
+#    my $sacc = get_accn($subject);
+#
+#    $qacc =~ s/\.[0-9]+//;
+#    $sacc =~ s/\.[0-9]+//;
+#
+#    if ( $query ne $subject ) {
+#        next
+#          if (    $length < ( ( $coverage / 100 ) * $size )
+#               || $percentid < $pid_cutoff );
+#        push( @{ $results{$qacc}{$sacc} }, $percentid );
+#    }
+#
+#}
+#
+#
+#open my $tmpout, ">>", "ani.tmp" or die "Unable to open ani.tmp for writing!\n";
+#
+#foreach my $genome ( sort keys %results ) {
+#    foreach my $subject ( sort keys %{ $results{$genome} } ) {
+#        my ( $ani, $hits );
+#        my $sum  = 0;
+#        my @data = @{ $results{$genome}{$subject} };
+#        if ( !@data ) {
+#            $ani  = 'N/A';
+#            $hits = 0;
+#        } else {
+#            $hits = @data;
+#            $sum += $_ for @data;
+#            $ani = $sum / $hits;
+#        }
+#        print $tmpout
+#          join( "\t", $genome, $subject, sprintf( "%.3f", $ani ), $hits )
+#          . "\n";
+#    }
+#}
+#
+#close $tmpout;
+#
+#sub get_accn {
+#    my $name = shift;
+#    my @split = split( '\|', $name );
+#    if ( $name !~ /gnl/ ) {
+#        my @accn_types = (
+#                    qr/\A[A-Z][0-9]{5}(\.[0-9])?\Z/,
+#                    qr/\A[A-Z]{2}_?[0-9]{6}(\.[0-9])?\Z/,
+#                    qr/\A([A-Z]{2}_)?[A-Z]{4}[0-9]{8}([0-9]{1,2})?(\.[0-9])?\Z/,
+#                    qr/\A[A-Z]{2}_[A-Z]{2}[0-9]{6}(\.[0-9])?\Z/
+#        );
+#        foreach my $data (@split) {
+#            foreach my $type (@accn_types) {
+#                if ( $data =~ $type ) {
+#                    return $data;
+#                }
+#            }
+#
+#        }
+#    } else {
+#        return $split[1];
+#    }
+#}
