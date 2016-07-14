@@ -102,6 +102,13 @@ sub rename {
             chomp($line);
             if ( $line =~ /^>/ ) {
                 my @data = split( '\|', $line );
+                if ( $line =~ /^>gnl/ ) {
+                    print STDERR "$file already appears to be renamed. Skipping.\n";
+                    close $fh;
+                    close INFILE;
+                    system("rm -f temp");
+                    exit(0);
+                }
                 if ( scalar(@data) > 1 ) {
                     for ( my $i = 0 ; $i < scalar(@data) ; $i++ ) {
                         $data[$i] =~ s/>//;
@@ -124,6 +131,7 @@ sub rename {
             }
         }
         close $fh;
+        close INFILE;
         system("rm -f $infile")   if $o;
         system("mv temp $infile") if $o;
     }

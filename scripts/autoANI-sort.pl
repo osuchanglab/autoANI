@@ -144,7 +144,13 @@ foreach my $genome (@neworder) {
         if ($genome eq $genome2) {
             print "\t"."----------";
         } else {
-            print "\t".$values{$genome}{$genome2};
+            if ( exists($values{$genome}{$genome2}) ) {
+                print "\t".$values{$genome}{$genome2};
+            } else {
+                print STDERR "Unable to find data for $genome2 in $genome\n";
+                print STDERR "Check your input file for missing values and try again\n";
+                exit;
+            }
         }
     }
     print "\n";
@@ -167,6 +173,10 @@ sub getData {
             my $line = $_;
             chomp($line);
             my ( $name, @data ) = split( "\t", $line );
+            if (scalar(@data) != scalar(@order) ) {
+                print STDERR "Missing data point for $name. Check to make sure all of the data is in this row and is formatted correctly\n";
+                exit;
+            }
             for ( my $j = 0 ; $j < scalar(@data) ; $j++ ) {
                 next if $name eq $order[$j];
                 $hash->{$name}{ $order[$j] } = $data[$j];

@@ -75,11 +75,9 @@ $sdir .= "scripts/";
 
 my $program     = $blastbindir . 'blastn';
 my $makeblastdb = $blastbindir . 'makeblastdb';
-#my $blastscript = $scriptdir . 'autoANI-blast.pl';
 my $elinkpath   = $scriptdir . 'auto_eutil.pl';
 
 if ( !$scriptdir ) {
-#    $blastscript = $sdir . 'autoANI-blast.pl';
     $elinkpath   = $sdir . 'auto_eutil.pl';
 }
 
@@ -177,6 +175,16 @@ if ( grep( /$blast_v_check/, @blast_version ) ) {
     exit(-1);
 }
 
+my $makeblastdb_check = system($makeblastdb,"-version");
+
+if ($makeblastdb_check) {
+    logger("Unable to find makeblastdb.\n");
+    logger("Check your system settings and try again.\n");
+    exit(-1);
+} else {
+    logger("Found makeblastdb.\n");
+}
+
 #Setup blastdbs
 my @folders = ( "fasta", "blast", "queries" );
 
@@ -188,7 +196,7 @@ foreach my $folder (@folders) {
     }
 }
 
-logger("Saving/Retrieving queries from file\n");
+logger("Saving query paths to ./queries/queries.txt\n");
 
 open my $queries, ">", "./queries/queries.txt"
   or die
@@ -247,39 +255,49 @@ foreach my $infile (@infiles) {
     if ( $skip == 0 ) {
         open my $temp, ">>", "ani.accn.tmp"
           or die "Unable to open ani.accn.tmp : $!";
-        logger("Generating chunked file $file.$size");
+        logger("Generating chunked file $file.$size from $file.\n");
         open my $fastaout, ">", "fasta/$file.$size"
           or die "$cwd/fasta/$file.$size is unavailble : $!";
         my $count = 0;
-        while ( my $seq = $in->next_seq() ) {
-            my $name  = $seq->id;
-            my $i     = 0;
-            my $chunk = 0;
-            my $desc  = $seq->description;
-            my $local = 0;
+        eval {
+            while ( my $seq = $in->next_seq() ) {
+                my $name  = $seq->id;
+                my $i     = 0;
+                my $chunk = 0;
+                my $desc  = $seq->description;
+                my $local = 0;
 
-            get_keys( $name, $desc, $temp );
+                get_keys( $name, $desc, $temp );
 
-            if ( $removeNs == 1 ) {
-                my $sequence = $seq->seq;
-                $sequence =~ s/N//g;
-                $seq->seq($sequence);
-            }
-            my $length = $seq->length;
-            while ( $i < $length ) {
-                my $min = $i + 1;
-                my $max = 0;
-                if ( ( $i + $size ) > $length ) {
-                    $max = $length;
-                } else {
-                    $max = $i + $size;
+                if ( $removeNs == 1 ) {
+                    my $sequence = $seq->seq;
+                    $sequence =~ s/N//g;
+                    $seq->seq($sequence);
                 }
-                print $fastaout ">${name}_${chunk} $desc\n";
-                print $fastaout $seq->subseq( $min, $max ) . "\n";
-                $i += $size;
-                $chunk++;
+                my $length = $seq->length;
+                while ( $i < $length ) {
+                    my $min = $i + 1;
+                    my $max = 0;
+                    if ( ( $i + $size ) > $length ) {
+                        $max = $length;
+                    } else {
+                        $max = $i + $size;
+                    }
+                    print $fastaout ">${name}_${chunk} $desc\n";
+                    print $fastaout $seq->subseq( $min, $max ) . "\n";
+                    $i += $size;
+                    $chunk++;
+                }
+                $count = $chunk;
             }
-            $count = $chunk;
+        };
+
+        if ($@) {
+            `rm -f ./fasta/$file.$size`;
+            logger("There was a problem parsing $file. Check to ensure it is a FASTA formatted file and try again.\n");
+            logger("*****If $file is not a FASTA formatted file, then it needs to be removed from ./queries/queries.txt before continuing.*****\n");
+            logger("Error Message:\n" . $@);
+            exit(-1);
         }
         close $fastaout;
 
@@ -363,7 +381,7 @@ if ( $finish == 0 ) {
 
     %headers = ();
 
-    my $outfmt = qq{\\'\'6 qseqid sseqid pident length evalue\'\\'};
+    my $outfmt = q{6 qseqid sseqid pident length evalue};
 
     my $pm = Parallel::ForkManager->new( $threads - 1 );
 
@@ -386,10 +404,10 @@ if ( $finish == 0 ) {
                     if ( -e $output ) {
                         `rm -f $output`;
                     }
-                    my @command = join( " ",                $program,                 
-                                        "-db",              qq{\\'\'$dbpath\'\\'},    
-                                        "-query",           qq{\\'\'$querypath\'\\'}, 
-                                        "-outfmt",          $outfmt,                  
+                    my @command =       ($program,                 
+                                        "-db",              qq{$dbpath},    
+                                        "-query",           qq{$querypath}, 
+                                        "-outfmt",          qq{$outfmt},                  
                                         "-evalue",          "0.001",   
                                         "-num_threads",     1,         
                                         "-max_target_seqs", "1",      
@@ -399,7 +417,8 @@ if ( $finish == 0 ) {
                                         "-penalty",         "-1",     
                                         "-reward",          1,        
                                         "-gapopen",         5,        
-                                        "-gapextend",       2);
+                                        "-gapextend",       2,
+                                        "-out",             $output);
                     logger("Running BLAST command:\n@command\n");
                     #@command = join( " ",
                     #                 $blastscript, $coverage, $size,
@@ -408,6 +427,7 @@ if ( $finish == 0 ) {
                     if ( $sge == 0 ) {
                         my $check = system(@command);
                         if ( $check != 0 || ! -s $output ) {
+                            `rm -f $output`;
                             logger("BLAST search between $query and $subject failed.\n");
                             logger("Check your input files and try again.\n");
                             exit(-1)
@@ -437,7 +457,7 @@ if ( $finish == 0 ) {
 }
 
 #Concatenate data to analyze
-logger("Concatenating output files and calculating results...\n");
+logger("Calculating results from BLAST output...\n");
 
 #`rm -f ./blast/all.out` if -e "./blast/all.out";
 #my $command = "cat ./blast/*.tab > ./blast/all.out";
@@ -447,7 +467,7 @@ logger("Concatenating output files and calculating results...\n");
 #    die "Problem concatenating output files!\n";
 #}
 
-logger("Loading names and blast results\n");
+logger("Loading names from ani.keys\n");
 
 if ( !-s "ani.keys" ) {
     keys_warn();
@@ -513,6 +533,8 @@ while (<$keys>) {
 }
 close $keys;
 
+logger("Printing name information to ani_rename.log\n");
+
 open my $rename, ">", "ani_rename.log"
   or die "Unable to open ani_rename.log : $!\n";
 
@@ -528,7 +550,7 @@ if ( !%idmatch ) {
 
 $time = localtime();
 
-logger("Concatenating files started at $time\n");
+logger("Extracting BLAST output started at $time\n");
 
 my %results;
 my %tmpresults;
@@ -538,6 +560,7 @@ my %seenfh;
 my %filenames;
 
 if ( -s $tmpfile ) {
+    logger("Temp file ($tmpfile) found. Extracting previous results now.\n");
     open my $tmpfh, "<", "$tmpfile" or die "Unable to open $tmpfile : $!\n";
     while(<$tmpfh>) {
         my $line = $_;
@@ -550,10 +573,25 @@ if ( -s $tmpfile ) {
         }
         $tmpresults{$query}{$subject}{'ani'} = $ani;
         $tmpresults{$query}{$subject}{'hits'} = $hits;
+        $genomes{$query} = 1;
     }
 }
 
-my @blastout = `find ./blast/ -type f -exec basename {} \;`;
+my @blastout = `find ./blast/ -type f -exec basename {} \\;`;
+
+chomp(@blastout);
+
+my $blastfiles = @blastout;
+
+if ($blastfiles < 2) {
+    logger("Unable to find BLAST output in ./blast/\n");
+    logger("Check input files and ./queries/queries.txt to ensure proper files are being examined.\n");
+    exit(-1);
+}
+
+$time = localtime();
+
+logger("Found $blastfiles BLAST output files to parse. Starting at $time.\n");
 
 foreach my $boutfile (sort @blastout) {
     next if $seenfh{$boutfile};
@@ -637,7 +675,10 @@ foreach my $boutfile (sort @blastout) {
 #
 #    }
 #}
-logger("Printing results\n");
+#
+$time = localtime();
+
+logger("Finished parsing BLAST output at $time\n\n");
 
 my $outfh;
 my $hitsfh;
@@ -662,6 +703,10 @@ if ($blasthitsfile) {
     print $hitsfh join( "\t", "", @print ) . "\n";
 }
 
+logger("Attempting to print output for " . @genomes . " genomes.\n");
+
+my $countoutfh = 0;
+
 foreach my $genome (@genomes) {
     print $outfh $headers{$genome} . "\t";
     if ($blasthitsfile) {
@@ -674,7 +719,7 @@ foreach my $genome (@genomes) {
             next;
         }
 
-        my $ani = "NA";
+        my $ani = undef;
         my $n   = 0;
 
         if ( defined( $results{$genome}{$genome2} ) ) {
@@ -682,12 +727,19 @@ foreach my $genome (@genomes) {
             my $n   = scalar( @{ $results{$genome}{$genome2} } );
             $sum += $_ for @{ $results{$genome}{$genome2} };
             $ani = sprintf( "%.3f", $sum / $n );
-            open my $tmpfh, ">", "ani.out.tmp" or die "Unable to open ani.out.tmp file : $!";
-            print $tmpfh join("\t",$genome,$genome2,$ani,$n,$filenames{$genome}{$genome2});
+            open my $tmpfh, ">>", "ani.out.tmp" or die "Unable to open ani.out.tmp file : $!";
+            print $tmpfh join("\t",$genome,$genome2,$ani,$n,$filenames{$genome}{$genome2}) . "\n";
             close $tmpfh;
         } elsif ( defined( $tmpresults{$genome}{$genome2} ) ) {
             $ani = sprintf( "%.3f", $tmpresults{$genome}{$genome2}{'ani'} );
             $n = $tmpresults{$genome}{$genome2}{'hits'};
+        }
+
+        if ($ani) {
+            $countoutfh++;
+        } else {
+            logger("Unable to find ANI value for $genome to $genome2 comparison.\n");
+            $ani = 'NA';
         }
 
         print $outfh $ani . "\t";
@@ -697,6 +749,7 @@ foreach my $genome (@genomes) {
     print $hitsfh "\n" if $blasthitsfile;
 }
 $time = localtime();
+logger("Printed output for $countoutfh comparisons.\n");
 logger("Finished at $time.\n");
 
 sub logger {
@@ -772,8 +825,8 @@ sub get_keys {
     my $name = shift;
     my $desc = shift;
     my $temp = shift;
-    if ( $name !~ /gnl/ ) {
-        my ($accession, $matched) = get_accn($name);
+    my ($accession, $matched) = get_accn($name);
+    if ($matched) {
         if ( !$accession ) {
             logger(
                 "Unable to find accession for $name. Check proper format and try again.\n"
@@ -782,7 +835,6 @@ sub get_keys {
         }
         print $temp $accession . "\n";
     } else {
-        my ($accession, $matched) = get_accn($name);
         if ( !$accession ) {
             logger(
                 "Unable to find accession for local genome $name. Check proper format and try again.\n"
@@ -796,6 +848,7 @@ sub get_keys {
         if ($desc) {
             $title = $desc;
         } else {
+            logger("Unsure if file containing $name is formatted correctly. Check your input to be sure you submitted the correct file.\n");
             $title = $accession;
         }
         print $keyfile join( "\t",

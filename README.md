@@ -80,6 +80,18 @@ The FASTA files will automatically be split into 1020nt chunks, BLAST DBs for ea
 
 You can then sort the tab delimited output file using the autoANI-sort.pl file in the scripts folder. You provide a reference genome name sort start the sorting by, and then the file will be sorted based on ANI values in an iterative fashion (use -help for more information).
 
+# Example Dataset
+
+There is an example dataset in the ./examples folder. Run autoANI.pl from the examples folder like so:
+
+`autoANI.pl -email youremail@yourinstitution.edu -threads 8 ./fna/*.fasta`
+
+This process should only take a few minutes. After that completes, then run:
+
+`autoANI.pl -email youremail@yourinstitution.edu -finish`
+
+To complete the process. Your example output will be printed to STDOUT (your screen).
+
 # History
 
 v1.0 - 2016-04-29 - First revision released to GitHub.
