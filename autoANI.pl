@@ -520,7 +520,7 @@ my $analyze = 1;
 if ( $analyze == 1 ) {
 
     open my $blast, "-|",
-      "find ./blast/blastout_sge/ -type f -print | xargs cat "
+      "find ./blast/ -type f -print | xargs cat "
       or die "Unable to concatenate blast output : $!\n";
 
     #Analyze data
