@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #Helps format the fasta (nucleotide) file in a way that is compatible with the remote blast search script
 #Expects the file to be named strain.fasta and the input of a genome with -genome (Genome) is required
 #OVERWRITES OLD FILE. MAKE SURE YOU KEEP A BACKUP!!!!!!

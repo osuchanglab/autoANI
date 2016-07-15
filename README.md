@@ -94,6 +94,7 @@ To complete the process. Your example output will be printed to STDOUT (your scr
 
 # History
 
+v1.1 - 2016-07-15 - Revised ani.out.tmp file generation. First run of -finish will take a while, depending on dataset size. Subsequent runs (on that same dataset) will be fast.
 v1.0 - 2016-04-29 - First revision released to GitHub.
 
 # Credits
