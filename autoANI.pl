@@ -69,6 +69,8 @@ my %matched;
 my $blasthitsfile;
 my $sge = 0;
 my $blast_v_check = qr/2.2.31|2.[3-9]+.[\d]|3.[\d]+.[\d]+/;
+my $prep;
+my $oldani;
 
 my ( $svol, $sdir, $sfile ) = File::Spec->splitpath($0);
 $sdir .= "scripts/";
@@ -80,6 +82,10 @@ my $elinkpath   = $scriptdir . 'auto_eutil.pl';
 if ( !$scriptdir ) {
     $elinkpath   = $sdir . 'auto_eutil.pl';
 }
+
+my $version = '1.2';
+my $date = 'September 12, 2016';
+my $vhelp;
 
 my $signal = GetOptions(
                          'size=i'      => \$size,
@@ -95,7 +101,10 @@ my $signal = GetOptions(
                          'keys'        => \$retkeys,
                          'outfile=s'   => \$outfile,
                          'blasthits=s' => \$blasthitsfile,
-                         'sge'         => \$sge
+                         'sge'         => \$sge,
+                         'prep'        => \$prep,
+                         'oldani'      => \$oldani,
+                         'version'     => \$vhelp
                        );
 
 if ($help) {
@@ -106,6 +115,12 @@ if ($help) {
 if ($man) {
     pod2usage( -verbose => 2,
                -output  => ">&STDERR" );
+}
+
+if ($vhelp) {
+    pod2usage( -verbose => 0,
+               -output  => ">&STDERR",
+               -msg     => "$0 version $version.\nReleased on $date.\n");
 }
 
 die("Unknown option passed.  Check parameters and try again.\n") if !$signal;
@@ -186,7 +201,7 @@ if ($makeblastdb_check) {
 }
 
 #Setup blastdbs
-my @folders = ( "fasta", "blast", "queries" );
+my @folders = ( "db", "fasta", "blast", "queries" );
 
 foreach my $folder (@folders) {
     if ( !-d $folder ) {
@@ -339,20 +354,23 @@ logger("Done at $time.\n");
 if ($retkeys) {
     logger("Refinding keys from headers.\n");
     `rm -f ani.accn.tmp`;
-    `rm -f all.keys`;
+    `rm -f ani.keys`;
     open my $temp, ">>", "ani.accn.tmp"
       or die "Unable to open ani.accn.tmp : $!";
-    open my $headers, "-|",
-      "grep '>' fasta/*.fna* | cut -f 2 -d ':' | cut -c 2- "
-      or die "Unable to get FASTA headers : $!\n";
-    my @headers = <$headers>;
-    s/_[0-9]+$// for @headers;
-    my %headers = map { $_ => 1 } @headers;
+    foreach my $infile (@infiles) {
+        open my $headers, "-|",
+          "grep '>' $infile  | cut -c 2- "
+          or die "Unable to get FASTA headers : $!\n";
+        my @headers = <$headers>;
+        s/_[0-9]+$// for @headers;
+        my %headers = map { $_ => 1 } @headers;
 
-    foreach my $header ( sort keys %headers ) {
-        my ( $name, $desc ) = split( " ", $header, 2 );
-        get_keys( $name, $desc, $temp );
+        foreach my $header ( sort keys %headers ) {
+            my ( $name, $desc ) = split( " ", $header, 2 );
+            get_keys( $name, $desc, $temp );
+        }
     }
+    close $temp;
 }
 
 close $keyfile;
@@ -373,15 +391,32 @@ if ( -s "ani.accn.tmp" ) {
         die("\n");
     }
     `rm -f ani.accn.tmp`;
+    my @sorted = `cat ani.keys | sort | uniq`;
+    `rm -f ani.keys`;
+    open my $sortfh, ">", "ani.keys" or die "Unable to open ani.keys! $!\n";
+    print $sortfh @sorted;
     $time = localtime();
     logger("Done at $time\n");
 }
 
+die("TESTING!");
+
+my $calcs = @infiles;
+
+$calcs = $calcs * ($calcs - 1);
+
+if ( $prep ) {
+    logger("$calcs BLAST searches required before completion.\n");
+    logger("-prep flag given. Quitting before BLAST.\n");
+    exit();
+}
+
 if ( $finish == 0 ) {
+    logger("Starting $calcs BLAST searches.\n");
 
     %headers = ();
 
-    my $outfmt = q{6 qseqid sseqid pident length evalue};
+    my $outfmt = q{6 qseqid sseqid pident length evalue nident};
 
     my $pm = Parallel::ForkManager->new( $threads - 1 );
 
@@ -415,6 +450,7 @@ if ( $finish == 0 ) {
                                         "-task",            "blastn", 
                                         "-xdrop_gap",       150,      
                                         "-penalty",         "-1",     
+                                        "-dust",            "no",
                                         "-reward",          1,        
                                         "-gapopen",         5,        
                                         "-gapextend",       2,
@@ -520,7 +556,7 @@ while (<$keys>) {
         my $value = 2 + $candidatus + $subsp;
         if ( $test == $value ) {
             $header = $guess;
-            if ( $gbname ) {
+            if ( $gbname ne 'NULL' ) {
                 if ($sciname ne $gbname) {
                     $header = $gbname;
                 }
@@ -565,13 +601,14 @@ if ( -s $tmpfile ) {
     while(<$tmpfh>) {
         my $line = $_;
         chomp($line);
-        my ($query, $subject, $ani, $hits, $file) = split("\t",$line);
+        my ($query, $subject, $ani, $ani_new, $hits, $file) = split("\t",$line);
         if ($file) {
             if (-s "./blast/$file") {
                 $seenfh{$file} = 1;
             }
         }
         $tmpresults{$query}{$subject}{'ani'} = $ani;
+        $tmpresults{$query}{$subject}{'ani_new'} = $ani_new;
         $tmpresults{$query}{$subject}{'hits'} = $hits;
         $genomes{$query} = 1;
     }
@@ -610,6 +647,8 @@ foreach my $boutfile (sort @blastout) {
         my $subject   = $data[1];
         my $percentid = $data[2];
         my $length    = $data[3];
+        my $nident    = $data[5];
+        my $new_pid   = ( $nident / $size ) * 100;
         my ( $query_contig, $subject_contig );
         my ( $query_genome, $subject_genome );
         $query =~ s/_[0-9]+(?=$)//;
@@ -639,8 +678,8 @@ foreach my $boutfile (sort @blastout) {
         if ( $query ne $subject ) {
             next
               if (    $length < ( ( $coverage / 100 ) * $size )
-                   || $percentid < $pid_cutoff );
-            push( @{ $results{$query_genome}{$subject_genome} }, $percentid );
+                   || $new_pid < $pid_cutoff );
+            push( @{ $results{$query_genome}{$subject_genome} }, [ $percentid, $new_pid ] );
         }
     }
 
@@ -720,18 +759,25 @@ foreach my $genome (@genomes) {
         }
 
         my $ani = undef;
+        my $ani_new = undef;
         my $n   = 0;
 
         if ( defined( $results{$genome}{$genome2} ) ) {
             my $sum = 0;
+            my $sum_new = 0;
             my $n   = scalar( @{ $results{$genome}{$genome2} } );
-            $sum += $_ for @{ $results{$genome}{$genome2} };
+            foreach my $result ( @{ $results{$genome}{$genome2} } ) {
+                $sum += $result->[0];
+                $sum_new += $result->[1];
+            }
             $ani = sprintf( "%.3f", $sum / $n );
+            $ani_new = sprintf( "%.3f", $sum_new / $n );
             open my $tmpfh, ">>", "ani.out.tmp" or die "Unable to open ani.out.tmp file : $!";
-            print $tmpfh join("\t",$genome,$genome2,$ani,$n,$filenames{$genome}{$genome2}) . "\n";
+            print $tmpfh join("\t",$genome,$genome2,$ani,$ani_new,$n,$filenames{$genome}{$genome2}) . "\n";
             close $tmpfh;
         } elsif ( defined( $tmpresults{$genome}{$genome2} ) ) {
             $ani = sprintf( "%.3f", $tmpresults{$genome}{$genome2}{'ani'} );
+            $ani_new = sprintf( "%.3f", $tmpresults{$genome}{$genome2}{'ani_new'} );
             $n = $tmpresults{$genome}{$genome2}{'hits'};
         }
 
@@ -741,8 +787,11 @@ foreach my $genome (@genomes) {
             logger("Unable to find ANI value for $genome to $genome2 comparison.\n");
             $ani = 'NA';
         }
-
-        print $outfh $ani . "\t";
+        my $printani = $ani_new;
+        if ($oldani) {
+            $printani = $ani;
+        }
+        print $outfh $printani . "\t";
         print $hitsfh $n . "\t" if $blasthitsfile;
     }
     print $outfh "\n";
@@ -863,11 +912,11 @@ __END__
 
 =head1 NAME
 
-autoANI.pl - Perform pairwise ANI (Average Nucleotide Identity) comparisons between any number of sequenced genomes
+autoANI.pl - Calculate pairwise ANI (Average Nucleotide Identity) values between any number of sequenced genomes
 
 =head1 SYNOPSIS
 
-autoANI.pl input[n].fasta input[n-1].fasta ... input[2].fasta input[1].fasta 
+autoANI.pl input1.fasta input2.fasta ... input[n].fasta
 
 =head1 OPTIONS
 
@@ -887,6 +936,10 @@ Print a verbose help message and exits.
 
 Turns off progress messages. Use noquiet to turn messages back on.
 
+=item B<-version>
+
+Print version number and exit.
+
 =item B<-email> (email@univ.edu) - B<REQUIRED>
 
 Enter your email.  NCBI requires this information to continue.
@@ -898,6 +951,18 @@ Using -nolog turns off logging. Logfile is in the format of ani.log.
 =item B<-threads> [1]
 
 *Recommended* - Using multiple threads will significantly speed up the BLAST searches.
+
+=item B<-prep>
+
+Do the prep and quit.
+
+=item B<-finish>
+
+Finish the job after BLAST searches.
+
+=item B<-oldani>
+
+Calculate the ANI value using the 'old' algorithm, where there was no adjustment for alignment length.
 
 =item B<-keys>
 

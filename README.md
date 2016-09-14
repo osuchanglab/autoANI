@@ -33,9 +33,9 @@ Required
 * BLAST+ version 2.2.31+
 * Perl version 5.10.1 or higher
 * Perl Modules
-  * BioPerl (Bio::Perl) v1.6.923, other versions might work but are unsupported
-  * BioPerl Eutilities (Bio::DB::EUtilities) v1.73
-  * Parallel Fork Manager (Parallel::ForkManager) v1.18
+  * BioPerl (Bio::Perl) v1.7.005 [(1.007000\_005)](http://search.cpan.org/~cjfields/BioPerl-1.007000_005/)
+  * BioPerl Eutilities (Bio::DB::EUtilities) v1.73 manual update from [github](https://github.com/bioperl/Bio-EUtilities)
+  * Parallel Fork Manager (Parallel::ForkManager) v1.18 or greater
 
 # Pipeline Description
 
@@ -92,10 +92,65 @@ This process should only take a few minutes. After that completes, then run:
 
 To complete the process. Your example output will be printed to STDOUT (your screen).
 
+# Algorithm
+
+To better explain the technical aspects of this script, I am including this section on the algorithm. I hope that even without reading the Perl code, this section will help you understand the specific steps this program uses to calculate ANI values.
+
+## Data Preparation
+
+Before doing any BLAST searches, the software prepares the data in three ways.
+
+1. The nucleotide files are chunked into 1020nt fragments.
+2. BLAST databases are generated from the full length genomes.
+3. Proper names for the output file are gathered from either NCBI or the input FASTA files (from the headers).
+
+More specifically, these events take place before BLAST searches:
+
+First the script ensures that the proper BLAST version is found, and that blast and makeblastdb are available to the script (generally present in your PATH environment variable). It then generates folders for several of the intermediate files, including chunked FASTA files (./fasta), BLAST output (./blast), and the path to the original input files (./queries). It then saves all of the input files in the queries.txt file in the ./queries folder, and ensures that there are no duplicate file names given in two separate locations.
+
+Next, the files are read and chunked versions are written to ./fasta, with name data written to ani.keys for local files, or accession numbers written to ani.accn.tmp for data from NCBI. BLAST DBs are written to the ./db folder. Using the accession numbers gathered from the headers of the chunked files, the NCBI E-Utilities are queried (using BioPerl modules) to download relevant naming data, including genus, species, and strain names. Some data in NCBI is not saved in the usual format, with Organism='Genus spcies' and Strain='strain name', so several different locations are checked for strain names. The relevant data from NCBI is then also stored in ani.keys.
+
+## BLAST Searches
+
+Once the data is prepared as above, then the BLAST searches can be started. The BLAST settings specified in Goris et al. 2007 are followed, with the 'new' BLAST+ software:
+
+`-X=150 -q=-1 -F=F`
+
+as
+
+`-xdrop_gap 150 -penalty -1 -reward 1 -dust no`
+
+We additionally use the filters `-max_target_seqs 1 and -max_hsps 1` to reduce the amount of output data and only provide the best BLAST hits. Further, the output only contains percent identity, alignment length, number of identical residues, and evalue in the output. Before the algorithm revision in v1.2, we used the straight percent identity from the BLAST search to compute the ANI. Moving forward, we will use the number of identical residues divided by the chunk size, which is what is specified in Goris et al. 2007. To compare to the old algorithm, use -oldani to output the old values. The primary effect of this change is to reduce ANI values, especially those of more distant comparisons. ANI values at or near the species level (~95% ANI) are relatively unaffected by this change.
+
+This script parallelizes the BLAST searches using the Parallel::ForkManager Perl module. This provides an additional speed benefit compared to using -num\_threads in BLAST, as not every step in the BLAST search is threaded.
+
+## Calculating ANI Values
+
+Each line of the BLAST output is searched to identify the query and subject genomes, and then checked to see if the result passes filter: longer than the length (70% of chunk size by default), and greater than the percent ID cutoff (30% by default), then the result is kept and used for ANI calculation. As explained above, the old ANI calculation uses the percent ID given by the BLAST program, while the new calculation divides the number of identical residues by the length. In both cases, the average is taken by adding all of the pairwise identities together and dividing by the number of matches. These values are stored in ani.out.tmp for future reference and so that all of the BLAST searches do not need to be parsed each time the output table is generated.
+
+Output is printed (to STDOUT by default) with the query as each row and the subject as each column. Use the -finish command to generate the table after the BLAST searches are all complete. Genome names are extracted from ani.keys and ANI values are either calculated directly from the BLAST output or taken from the ani.out.tmp file. Output can be sorted with the autoANI-sort.pl script in the ./autoANI/scripts folder.
+
 # History
 
+v1.2 - 2016-09-12 - Fixed ANI calculation to be true to Goris et al 2007. This results in decreased ANI values, with the more distant relationships being more affected than close relationships.
+
 v1.1 - 2016-07-15 - Revised ani.out.tmp file generation. First run of -finish will take a while, depending on dataset size. Subsequent runs (on that same dataset) will be fast.
+
 v1.0 - 2016-04-29 - First revision released to GitHub.
+
+# Citations
+
+Please cite:
+
+`Davis II EW, Weisberg AJ, Tabima JF, Grunwald NJ, Chang JH. (2016) Gall-ID: tools for genotyping gall-causing phytopathogenic bacteria. PeerJ 4:e2222. https://doi.org/10.7717/peerj.2222`
+
+if you use this software. Also, please cite these other publications as integral parts of autoANI:
+
+`Stajich JE, Block D, Boulez K, Brenner SE, Chervitz SA, Dagdigian C, Fuellen G, Gilbert JG, Korf I, Lapp H, Lehväslaiho H, Matsalla C, Mungall CJ, Osborne BI, Pocock MR, Schattner P, Senger M, Stein LD, Stupka E, Wilkinson MD, Birney E. (2002) The Bioperl toolkit: Perl modules for the life sciences. Genome Res. 12(10):1611-8. https://doi.org/10.1101/gr.361602
+
+Goris J, Konstantinidis KT, Klappenbach JA, Coenye T, Vandamme P, Tiedje JM. (2007) DNA-DNA hybridization values and their relationship to whole-genome sequence similarities. IJSEM 57(1):81–91. http://doi.org/10.1099/ijs.0.64483-0
+
+Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. (2009) BLAST+: architecture and applications. BMC Bioinformatics 10:421. https://doi.org/10.1186/1471-2105-10-421`
 
 # Credits
 
