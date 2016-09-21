@@ -132,11 +132,13 @@ Output is printed (to STDOUT by default) with the query as each row and the subj
 
 # History
 
-v1.2 - 2016-09-12 - Fixed ANI calculation to be true to Goris et al 2007. This results in decreased ANI values, with the more distant relationships being more affected than close relationships.
+v1.2.1 - 2016-09-21 - Added better SGE support/notes. SGE support is only available at Oregon State University on the [CGRB infrastructure.](https://shell.cgrb.oregonstate.edu)
 
-v1.1 - 2016-07-15 - Revised ani.out.tmp file generation. First run of -finish will take a while, depending on dataset size. Subsequent runs (on that same dataset) will be fast.
+v1.2.0 - 2016-09-12 - Fixed ANI calculation to be true to Goris et al 2007. This results in decreased ANI values, with the more distant relationships being more affected than close relationships.
 
-v1.0 - 2016-04-29 - First revision released to GitHub.
+v1.1.0 - 2016-07-15 - Revised ani.out.tmp file generation. First run of -finish will take a while, depending on dataset size. Subsequent runs (on that same dataset) will be fast.
+
+v1.0.0 - 2016-04-29 - First revision released to GitHub.
 
 # Citations
 

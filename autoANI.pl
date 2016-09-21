@@ -67,7 +67,7 @@ my $retkeys;
 my $outfile;
 my %matched;
 my $blasthitsfile;
-my $sge = 0;
+my $sge = 0; # sge flag only works on Oregon State University CGRB infrastructure
 my $blast_v_check = qr/2.2.31|2.[3-9]+.[\d]|3.[\d]+.[\d]+/;
 my $prep;
 my $oldani;
@@ -83,8 +83,8 @@ if ( !$scriptdir ) {
     $elinkpath   = $sdir . 'auto_eutil.pl';
 }
 
-my $version = '1.2';
-my $date = 'September 12, 2016';
+my $version = '1.2.1';
+my $date = 'September 21, 2016';
 my $vhelp;
 
 my $signal = GetOptions(
@@ -106,6 +106,7 @@ my $signal = GetOptions(
                          'oldani'      => \$oldani,
                          'version'     => \$vhelp
                        );
+#sge flag only works on Oregon State University CGRB infrastructure.
 
 if ($help) {
     pod2usage( -verbose => 1,
@@ -124,6 +125,37 @@ if ($vhelp) {
 }
 
 die("Unknown option passed.  Check parameters and try again.\n") if !$signal;
+
+if ( $sge ) {
+    my $hostname = `hostname`;
+    chomp($hostname);
+    if ( $hostname !~ /cgrb\.oregonstate\.local/ ) {
+        logger("You do not appear to be on the Oregon State University infrastructure.\n");
+        logger("Setting \$sge flag to 0\n");
+        $sge = 0;
+    } else {
+        my @submit_hosts = `qconf -ss`;
+        chomp(@submit_hosts);
+        my $success = 0;
+        foreach my $submit_host (@submit_hosts) {
+            if ( $hostname =~ /$submit_host/ ) {
+                logger("$hostname is SGE submit host.\n");
+                $success = 1;
+                last;
+            }
+        }
+        if ( $success == 0 ) {
+            logger(
+                "$hostname is not submit host.\n"
+                . "Retry submission from a submit host below "
+                . "(or run the script locally without the -sge flag):\n"
+                . join( "\n", @submit_hosts )
+                . "\n" 
+            );
+            exit(-1);
+        }
+    }   
+}
 
 my @infiles;
 foreach (@ARGV) {
@@ -399,8 +431,6 @@ if ( -s "ani.accn.tmp" ) {
     logger("Done at $time\n");
 }
 
-die("TESTING!");
-
 my $calcs = @infiles;
 
 $calcs = $calcs * ($calcs - 1);
@@ -439,28 +469,28 @@ if ( $finish == 0 ) {
                     if ( -e $output ) {
                         `rm -f $output`;
                     }
-                    my @command =       ($program,                 
-                                        "-db",              qq{$dbpath},    
-                                        "-query",           qq{$querypath}, 
-                                        "-outfmt",          qq{$outfmt},                  
-                                        "-evalue",          "0.001",   
-                                        "-num_threads",     1,         
-                                        "-max_target_seqs", "1",      
-                                        "-max_hsps",        "1",      
-                                        "-task",            "blastn", 
-                                        "-xdrop_gap",       150,      
-                                        "-penalty",         "-1",     
-                                        "-dust",            "no",
-                                        "-reward",          1,        
-                                        "-gapopen",         5,        
-                                        "-gapextend",       2,
-                                        "-out",             $output);
-                    logger("Running BLAST command:\n@command\n");
                     #@command = join( " ",
                     #                 $blastscript, $coverage, $size,
                     #                 $pid_cutoff, $output, @command );
 
                     if ( $sge == 0 ) {
+                        my @command =       ($program,                 
+                                            "-db",              qq{$dbpath},    
+                                            "-query",           qq{$querypath}, 
+                                            "-outfmt",          qq{$outfmt},                  
+                                            "-evalue",          "0.001",   
+                                            "-num_threads",     1,         
+                                            "-max_target_seqs", "1",      
+                                            "-max_hsps",        "1",      
+                                            "-task",            "blastn", 
+                                            "-xdrop_gap",       150,      
+                                            "-penalty",         "-1",     
+                                            "-dust",            "no",
+                                            "-reward",          1,        
+                                            "-gapopen",         5,        
+                                            "-gapextend",       2,
+                                            "-out",             $output);
+                        logger("Running BLAST command:\n@command\n");
                         my $check = system(@command);
                         if ( $check != 0 || ! -s $output ) {
                             `rm -f $output`;
@@ -470,6 +500,24 @@ if ( $finish == 0 ) {
                         }
 
                     } else {
+                        #Only works on Oregon State University CGRB Infrastructure
+                        my @command =       ($program,                 
+                                            "-db",              qq{$dbpath},    
+                                            "-query",           qq{$querypath}, 
+                                            "-outfmt",          qq{\'$outfmt\'},                  
+                                            "-evalue",          "0.001",   
+                                            "-num_threads",     1,         
+                                            "-max_target_seqs", "1",      
+                                            "-max_hsps",        "1",      
+                                            "-task",            "blastn", 
+                                            "-xdrop_gap",       150,      
+                                            "-penalty",         "-1",     
+                                            "-dust",            "no",
+                                            "-reward",          1,        
+                                            "-gapopen",         5,        
+                                            "-gapextend",       2,
+                                            "-out",             $output);
+                        logger("Running BLAST command through SGE:\n@command\n");
                         @command = join( " ",
                                          "SGE_Batch",                "-r",
                                          "sge.${query}_vs_$subject", "-q",
