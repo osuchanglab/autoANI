@@ -1,3 +1,5 @@
+**Warning! NCBI is currently implementing changes that will affect the usability of this software. Please use the dev branch of autoANI if you are interested in keeping up with my attempts at fixing the problems caused by these changes. For now, assume that the master branch will NOT work. Once NCBI completes the changes (implementing https, not using GI numbers anymore) and the code is stable, I will merge the dev branch with master again.**
+
 # autoANI
 
 
