@@ -33,16 +33,19 @@ use strict;
 use Getopt::Long;
 
 my $headers = 0;
+my $divergence = 0;
 
-GetOptions("headers" => \$headers);
+GetOptions("h|headers" => \$headers,
+           "d|divergence" => \$divergence);
 
 my $infile = shift;
-my $outfile = $infile.".divergence";
+#my $outfile = $infile.".divergence";
 my $names = $infile.".names";
 
 open INFILE, "$infile" or die "$infile unavailable : $!";
 
-open my $outfh, ">", "$outfile" or die "Unable to open $outfile for writing: $!";
+#open my $outfh, ">", "$outfile" or die "Unable to open $outfile for writing: $!";
+my $outfh = \*STDOUT;
 
 open my $namesfh, ">", "$names" or die "Unable to open $names for writing: $!";
 
@@ -61,9 +64,14 @@ while (<INFILE>) {
     print $namesfh $name."\n";
     foreach my $data (@data) {
         if ( $data eq '----------' ) {
-            $data = 0;
+            $data = 100;
+            if ( $divergence ) {
+                $data = 0;
+            }
         } else {
-            $data = 100 - $data;
+            if ( $divergence ) {
+                $data = 100 - $data;
+            }
         }
     }
     if ( $headers == 1 ) {

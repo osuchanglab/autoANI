@@ -45,11 +45,14 @@ my %hits;
 my %values;
 my $hitlimit = 0;
 my @hitfilter;
+my $sample;
+my %keep;
 
 GetOptions( 'reference=s' => \$ref,
             'help|h'        => \$help,
             'hitsfile=s'      => \$hitsfile,
-            'hitlimit=i'      => \$hitlimit);
+            'hitlimit=i'      => \$hitlimit,
+            'subsample=s' => \$sample);
 
 if ($help) {
     pod2usage(
@@ -85,6 +88,20 @@ if ($hitsfile) {
 
     close $hitsfh;
 
+}
+
+if ($sample) {
+    if ( ! -e $sample ) {
+        print STDERR "Please provide a valid, existing file name for -sample argument and try again\n";
+        exit(-1);
+    }
+
+    open my $samplefh, "<", $sample or die "Unable to open sample file $sample : $!";
+    while ( <$samplefh> ) {
+        my $line = $_;
+        chomp($line);
+        $keep{$line} = 1;
+    }
 }
 
 open my $infh, "<", $infile or die "Unable to open input file $infile : $!";
@@ -178,7 +195,12 @@ sub getData {
                 exit;
             }
             for ( my $j = 0 ; $j < scalar(@data) ; $j++ ) {
-                next if $name eq $order[$j];
+                if ( $name eq $order[$j] ) {
+                    next;
+                } elsif ( %keep ) {
+                    next if ! exists( $keep{$name} );
+                    next if ! exists( $keep{$order[$j]} );
+                }
                 $hash->{$name}{ $order[$j] } = $data[$j];
             }
         }

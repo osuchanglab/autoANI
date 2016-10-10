@@ -222,15 +222,24 @@ if ( grep( /$blast_v_check/, @blast_version ) ) {
     exit(-1);
 }
 
-my $makeblastdb_check = system($makeblastdb,"-version");
 
-if ($makeblastdb_check) {
-    logger("Unable to find makeblastdb.\n");
-    logger("Check your system settings and try again.\n");
+my @makeblastdb_check = `$makeblastdb -version`;
+logger(join('',@makeblastdb_check));
+if ( $? != 0 ) {
+    logger("Problem generating blast databases!\n");
+    logger("Make sure makeblastdb is in your PATH or you have added the path to the top of $0\n");
     exit(-1);
-} else {
-    logger("Found makeblastdb.\n");
 }
+
+#my $makeblastdb_check = system($makeblastdb,"-version");
+#
+#if ($makeblastdb_check) {
+#    logger("Unable to find makeblastdb.\n");
+#    logger("Check your system settings and try again.\n");
+#    exit(-1);
+#} else {
+#    logger("Found makeblastdb.\n");
+#}
 
 #Setup blastdbs
 my @folders = ( "db", "fasta", "blast", "queries" );
