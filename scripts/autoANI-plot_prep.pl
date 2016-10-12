@@ -31,12 +31,24 @@
 use warnings;
 use strict;
 use Getopt::Long;
+use Pod::Usage;
 
 my $headers = 0;
 my $divergence = 0;
+my $help = 0;
 
-GetOptions("h|headers" => \$headers,
-           "d|divergence" => \$divergence);
+GetOptions(
+    "headers" => \$headers,
+    "d|divergence" => \$divergence,
+    "h|help" => \$help
+);
+
+if ($help) {
+    pod2usage(
+        -verbose => 1,
+        -output => \*STDERR
+    );
+}
 
 my $infile = shift;
 #my $outfile = $infile.".divergence";
@@ -84,3 +96,28 @@ close INFILE;
 close $outfh;
 
 close $namesfh;
+
+__END__
+
+=head1 Name
+
+autoANI-plot_prep.pl - Help printing matrices for plotting/heatmap generation in R
+
+=head1 SYNOPSIS
+
+autoANI-plot_prep.pl [options] ani.out > ani_plot.out
+
+=head1 OPTIONS
+
+=item B<-help>
+
+Print a brief help message and exits.
+
+=item B<-divergence>
+
+Print ANI divergence (100-ANI) instead of ANI.
+
+=item B<-headers>
+
+Print header lines. By default, no headers are printed.
+
