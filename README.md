@@ -132,6 +132,8 @@ Output is printed (to STDOUT by default) with the query as each row and the subj
 
 # History
 
+v1.3.0 - 2016-11-15 - Now throw away chunks at end of contigs (those that would be <1kb). Should improve accuracy for highly fragmented genomes.
+
 v1.2.1 - 2016-09-21 - Added better SGE support/notes. SGE support is only available at Oregon State University on the [CGRB infrastructure.](https://shell.cgrb.oregonstate.edu)
 
 v1.2.0 - 2016-09-12 - Fixed ANI calculation to be true to Goris et al 2007. This results in decreased ANI values, with the more distant relationships being more affected than close relationships.

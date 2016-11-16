@@ -83,8 +83,8 @@ if ( !$scriptdir ) {
     $elinkpath   = $sdir . 'auto_eutil.pl';
 }
 
-my $version = '1.2.1';
-my $date = 'September 21, 2016';
+my $version = '1.3.0';
+my $date = 'November 15, 2016';
 my $vhelp;
 
 my $signal = GetOptions(
@@ -335,7 +335,8 @@ foreach my $infile (@infiles) {
                     my $min = $i + 1;
                     my $max = 0;
                     if ( ( $i + $size ) > $length ) {
-                        $max = $length;
+                        last;
+#                        $max = $length;
                     } else {
                         $max = $i + $size;
                     }
@@ -344,7 +345,7 @@ foreach my $infile (@infiles) {
                     $i += $size;
                     $chunk++;
                 }
-                $count = $chunk;
+                $count += $chunk;
             }
         };
 
