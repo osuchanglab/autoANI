@@ -708,8 +708,6 @@ foreach my $boutfile (sort @blastout) {
         my ( $qacc, $qmatched ) = get_accn($query);
         my ( $sacc, $smatched ) = get_accn($subject);
 
-        $qacc =~ s/\.[0-9]+//;
-        $sacc =~ s/\.[0-9]+//;
         my @accessions = ( $qacc, $sacc );
 
         foreach my $accession (@accessions) {
