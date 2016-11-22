@@ -45,6 +45,9 @@ my $scriptdir   = '';
 
 #Set to your e-mail address if you will be the primary user
 my $email = '';
+if (defined $ENV{'EMAIL'}) {
+    $email ||= $ENV{'EMAIL'};
+}
 
 my $incommand = join( " ", $0, @ARGV );
 
@@ -77,10 +80,10 @@ $sdir .= "scripts/";
 
 my $program     = $blastbindir . 'blastn';
 my $makeblastdb = $blastbindir . 'makeblastdb';
-my $elinkpath   = $scriptdir . 'auto_eutil.pl';
+my $elinkpath   = $scriptdir . 'auto_edirect.pl';
 
 if ( !$scriptdir ) {
-    $elinkpath   = $sdir . 'auto_eutil.pl';
+    $elinkpath   = $sdir . 'auto_edirect.pl';
 }
 
 my $version = '1.3.0';
@@ -422,7 +425,7 @@ if ( -s "ani.accn.tmp" ) {
     logger("Retrieving taxonomic data from NCBI at $time\n");
     my $command = join( " ",
                         $elinkpath, "--log",           "ani.eutil.log",
-                        "--manual", "ani.keys.manual", "--email",
+                        "--email",
                         $email,     "ani.accn.tmp",    ">>",
                         "ani.keys" );
     my $error = system("$command");
@@ -571,13 +574,15 @@ open my $keys, "-|", "sort ani.keys | uniq"
   or die "ani.keys is unavailable : $!\n";
 
 #Current format is Accession,AssemblyID,TaxID,SciName,GuessName,GI,Master,GenBankName,Host,Country,Source,Strain,CultureCollection
+#Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
+#                  $match        0        1      2    3    4         5         6       7      8          9           10
 while (<$keys>) {
     my $line = $_;
     chomp($line);
     my ( $accn, @values ) = split( "\t", $line );
     my $match = $values[0];
     if ( $match eq 'NULL' ) {
-        $match = $values[5];
+        $match = $values[4];
     }
     $idmatch{$accn} = $match;
 
@@ -585,20 +590,8 @@ while (<$keys>) {
         
         #Choose appropriate header name
         my $sciname = $values[2];
-        my $guess   = $values[3];
-        my $gbname = '';
-        my $strain = '';
-        my $culture = '';
-        if ($values[6]) {
-            $gbname = $values[6];
-        }
-        if ($values[10]) {
-            $strain = $values[10]; 
-        }
-        if ($values[11]) {
-            $culture = $values[11];
-        }
-        my $header = $sciname;
+        my $gbname  = $values[5];
+        my $header  = $sciname;
         my @test = split( " ", $sciname );  #Test for quality of name from taxid
         my $test = @test;
         my @test2 = split( " ", $gbname );
@@ -613,13 +606,12 @@ while (<$keys>) {
         }
         my $value = 2 + $candidatus + $subsp;
         if ( $test == $value ) {
-            $header = $guess;
             if ( $gbname ne 'NULL' ) {
-                if ($sciname ne $gbname) {
+                if ( $sciname ne $gbname ) {
                     $header = $gbname;
                 }
             }
-        } 
+        }
 
         $headers{$match} = $header;
     }
