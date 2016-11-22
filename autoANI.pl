@@ -74,6 +74,7 @@ my $sge = 0; # sge flag only works on Oregon State University CGRB infrastructur
 my $blast_v_check = qr/2.2.31|2.[3-9]+.[\d]|3.[\d]+.[\d]+/;
 my $prep;
 my $oldani;
+my $queue = 'bpp'; #Only relevant for Oregon State University CGRB infrastructure
 
 my ( $svol, $sdir, $sfile ) = File::Spec->splitpath($0);
 $sdir .= "scripts/";
@@ -107,7 +108,8 @@ my $signal = GetOptions(
                          'sge'         => \$sge,
                          'prep'        => \$prep,
                          'oldani'      => \$oldani,
-                         'version'     => \$vhelp
+                         'version'     => \$vhelp,
+                         'queue=s'       => \$queue
                        );
 #sge flag only works on Oregon State University CGRB infrastructure.
 
@@ -534,7 +536,7 @@ if ( $finish == 0 ) {
                         @command = join( " ",
                                          "SGE_Batch",                "-r",
                                          "sge.${query}_vs_$subject", "-q",
-                                         "bpp",                      "-c",
+                                         $queue,                      "-c",
                                          qq{"@command"},             "-Q" );
                         my @runoutput = `@command`;
                     }
