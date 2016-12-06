@@ -1,15 +1,24 @@
 # autoANI
 
-
 # Installation
 
 No installation is required if dependencies are installed. See these optional steps to save some time running the program if you are going to be the sole person using the software.
 
 For questions about your PATH, see [this link](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them) for a decent basic explanation.
 
-1. Edit line 47 to include your e-mail address. Your e-mail address will only be used to query the NCBI databases using the E-utilites. This is to allow NCBI to contact you if there is a problem with your requests or if you are abusing the system.
+1. Edit line 49 to include your e-mail address. Your e-mail address will only be used to query the NCBI databases using the E-utilites. This is to allow NCBI to contact you if there is a problem with your requests or if you are abusing the system. 
 
-    Make the change:
+If you will be sharing this installation with others, set your EMAIL environment variable. 
+
+    ```bash
+    export EMAIL yourname@yourschool.edu
+    ```
+    OR:
+    ```bash
+    setenv EMAIL yourname@yourschool.edu
+    ```
+
+    Otherwise, make the change:
     
     ```perl
     my $email = '';
@@ -19,9 +28,9 @@ For questions about your PATH, see [this link](https://superuser.com/questions/2
     my $email = 'youremail@yourschool.edu';
     ```
 
-2. Edit line 42 to the path of your blast executables if they are not in your PATH.
+2. Edit line 44 to the path of your blast executables if they are not in your PATH.
 
-3. If you wish to include autoANI.pl in your path, but don't want to move the ./scripts folder to the same location, put the full path to the scripts folder in line 44. For example:
+3. If you wish to include autoANI.pl in your path, but don't want to move the ./scripts folder to the same location, put the full path to the scripts folder in line 46. For example:
 
   * Move autoANI.pl to a location in your PATH (e.g. /usr/bin or /usr/local/bin or ~/bin)
   * Add the full path to the unpacked scripts directory to line 44 (eg. ~/libs/autoANI/scripts)
@@ -34,7 +43,7 @@ Required
 * Perl version 5.10.1 or higher
 * Perl Modules
   * BioPerl (Bio::Perl) v1.7.000 [(1.007000)](http://search.cpan.org/~cjfields/BioPerl-1.007000/)
-  * BioPerl Eutilities (Bio::DB::EUtilities) v1.75 or higher
+  * NCBI Entrez Direct scripts - Run edirect-dl.pl from scripts folder. [See here](https://www.ncbi.nlm.nih.gov/books/NBK179288/) for more information
   * Parallel Fork Manager (Parallel::ForkManager) v1.18 or higher
 
 # Pipeline Description
@@ -132,6 +141,8 @@ Output is printed (to STDOUT by default) with the query as each row and the subj
 
 # History
 
+v2.0.0 - 2016-12-06 - Major update. No longer requires Bio::DB::EUtilities. Not compatible with previous version.
+
 v1.3.0 - 2016-11-15 - Now throw away chunks at end of contigs (those that would be <1kb). Should improve accuracy for highly fragmented genomes.
 
 v1.2.1 - 2016-09-21 - Added better SGE support/notes. SGE support is only available at Oregon State University on the [CGRB infrastructure.](https://shell.cgrb.oregonstate.edu)
@@ -142,19 +153,42 @@ v1.1.0 - 2016-07-15 - Revised ani.out.tmp file generation. First run of -finish 
 
 v1.0.0 - 2016-04-29 - First revision released to GitHub.
 
+# Planned Updates
+
+* Remove BioPerl dependency completely. Just need time to do it.
+* When NCBI removes GI dependency from E-Utilities, switch GIs for Accessions. Should reduce coding complexity by a small, but significant, amount.
+
+# Description of Included Files
+
+| Filename    | Description  |
+| ----------- | ------------ |
+| README.md   | This file    |
+| LICENSE     | Description of GPL license |
+| autoANI.pl  | Main program |
+| examples/   | Folder with example files |
+| scripts/autoANI-plot\_prep.pl | Helps prepare data for import into R for generating heatmaps |
+| scripts/autoANI-sort.pl | Sorts output based on user-provided reference strain name |
+| scripts/auto\_edirect.pl | Using accessions as input, downloads strain name and other information |
+| scripts/edirect-dl.pl | Downloader for edirect tools from NCBI |
+| scripts/fasta\_format.pl | Formats user-generated FASTA files |
+
 # Citations
 
 Please cite:
 
+```
 Davis II EW, Weisberg AJ, Tabima JF, Grunwald NJ, Chang JH. (2016) Gall-ID: tools for genotyping gall-causing phytopathogenic bacteria. PeerJ 4:e2222. https://doi.org/10.7717/peerj.2222
+```
 
-if you use this software. Also, please cite these other publications as integral parts of autoANI:
+If you use this software. Also, please cite these other publications as integral parts of autoANI:
 
+```
 Stajich JE, Block D, Boulez K, Brenner SE, Chervitz SA, Dagdigian C, Fuellen G, Gilbert JG, Korf I, Lapp H, Lehväslaiho H, Matsalla C, Mungall CJ, Osborne BI, Pocock MR, Schattner P, Senger M, Stein LD, Stupka E, Wilkinson MD, Birney E. (2002) The Bioperl toolkit: Perl modules for the life sciences. Genome Res. 12(10):1611-8. https://doi.org/10.1101/gr.361602
 
 Goris J, Konstantinidis KT, Klappenbach JA, Coenye T, Vandamme P, Tiedje JM. (2007) DNA-DNA hybridization values and their relationship to whole-genome sequence similarities. IJSEM 57(1):81–91. http://doi.org/10.1099/ijs.0.64483-0
 
 Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. (2009) BLAST+: architecture and applications. BMC Bioinformatics 10:421. https://doi.org/10.1186/1471-2105-10-421
+```
 
 # Credits
 

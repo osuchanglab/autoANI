@@ -89,8 +89,8 @@ if ( !$scriptdir ) {
     $elinkpath   = $sdir . 'auto_edirect.pl';
 }
 
-my $version = '1.3.0';
-my $date = 'November 15, 2016';
+my $version = '2.0.0';
+my $date = 'December 6, 2016';
 my $vhelp;
 
 my $signal = GetOptions(
