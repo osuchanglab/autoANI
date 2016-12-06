@@ -14,7 +14,7 @@ If you will be sharing this installation with others, set your EMAIL environment
 export EMAIL yourname@yourschool.edu
 ```
 OR:
-```bash
+```tcsh
 setenv EMAIL yourname@yourschool.edu
 ```
 
