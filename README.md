@@ -10,23 +10,23 @@ For questions about your PATH, see [this link](https://superuser.com/questions/2
 
 If you will be sharing this installation with others, set your EMAIL environment variable. 
 
-    ```bash
-    export EMAIL yourname@yourschool.edu
-    ```
-    OR:
-    ```bash
-    setenv EMAIL yourname@yourschool.edu
-    ```
+```bash
+export EMAIL yourname@yourschool.edu
+```
+OR:
+```bash
+setenv EMAIL yourname@yourschool.edu
+```
 
-    Otherwise, make the change:
-    
-    ```perl
-    my $email = '';
-    ```
-    to
-    ```perl
-    my $email = 'youremail@yourschool.edu';
-    ```
+Otherwise, make the change:
+
+```perl
+my $email = '';
+```
+to
+```perl
+my $email = 'youremail@yourschool.edu';
+```
 
 2. Edit line 44 to the path of your blast executables if they are not in your PATH.
 
@@ -41,9 +41,10 @@ Required
 
 * BLAST+ version 2.2.31+
 * Perl version 5.10.1 or higher
+* NCBI Entrez Direct scripts - Run edirect-dl.pl from scripts folder. [See here](https://www.ncbi.nlm.nih.gov/books/NBK179288/) for more information
 * Perl Modules
   * BioPerl (Bio::Perl) v1.7.000 [(1.007000)](http://search.cpan.org/~cjfields/BioPerl-1.007000/)
-  * NCBI Entrez Direct scripts - Run edirect-dl.pl from scripts folder. [See here](https://www.ncbi.nlm.nih.gov/books/NBK179288/) for more information
+  * ~~BioPerl Eutilties (Bio::DB::EUtilities)~~ **NO LONGER REQUIRED**
   * Parallel Fork Manager (Parallel::ForkManager) v1.18 or higher
 
 # Pipeline Description
