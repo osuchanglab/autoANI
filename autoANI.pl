@@ -32,6 +32,8 @@ use File::Spec;
 use Getopt::Long;
 use Pod::Usage;
 use Parallel::ForkManager;
+use Time::HiRes qw{sleep};
+my $stime = 0.33;
 
 #Set Defaults here
 my $size = 1020;
@@ -539,6 +541,7 @@ if ( $finish == 0 ) {
                                          $queue,                      "-c",
                                          qq{"@command"},             "-Q" );
                         my @runoutput = `@command`;
+                        sleep($stime);
                     }
                 }
 
