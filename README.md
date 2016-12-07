@@ -39,7 +39,7 @@ my $email = 'youremail@yourschool.edu';
 
 Required 
 
-* BLAST+ version 2.2.31+
+* BLAST+ version 2.2.31+ (v 2.5.0+ is required for remote (nt) searches)
 * Perl version 5.10.1 or higher
 * NCBI Entrez Direct scripts - Run edirect-dl.pl from scripts folder. [See here](https://www.ncbi.nlm.nih.gov/books/NBK179288/) for more information
 * Perl Modules
