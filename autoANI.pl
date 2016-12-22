@@ -330,7 +330,7 @@ foreach my $infile (@infiles) {
                 my $desc  = $seq->description;
                 my $local = 0;
 
-                get_keys( $name, $desc, $temp );
+                get_keys( $name, $desc, $temp, $keyfile );
 
                 if ( $removeNs == 1 ) {
                     my $sequence = $seq->seq;
@@ -396,6 +396,8 @@ foreach my $infile (@infiles) {
     }
 }
 
+close $keyfile;
+
 $time = localtime();
 
 logger("Done at $time.\n");
@@ -404,6 +406,7 @@ if ($retkeys) {
     logger("Refinding keys from headers.\n");
     `rm -f ani.accn.tmp`;
     `rm -f ani.keys`;
+    open my $keyfile, ">>", "ani.keys" or die "Unable to open keyfile  : $!";
     open my $temp, ">>", "ani.accn.tmp"
       or die "Unable to open ani.accn.tmp : $!";
     foreach my $infile (@infiles) {
@@ -411,18 +414,19 @@ if ($retkeys) {
           "grep '>' $infile  | cut -c 2- "
           or die "Unable to get FASTA headers : $!\n";
         my @headers = <$headers>;
-        s/_[0-9]+$// for @headers;
+        chomp(@headers);
+        #s/_[0-9]+$// for @headers;
         my %headers = map { $_ => 1 } @headers;
 
         foreach my $header ( sort keys %headers ) {
             my ( $name, $desc ) = split( " ", $header, 2 );
-            get_keys( $name, $desc, $temp );
+            get_keys( $name, $desc, $temp, $keyfile );
         }
     }
+    close $keyfile;
     close $temp;
 }
 
-close $keyfile;
 
 if ( -s "ani.accn.tmp" ) {
     $time = localtime();
@@ -927,6 +931,7 @@ sub get_keys {
     my $name = shift;
     my $desc = shift;
     my $temp = shift;
+    my $key  = shift;
     my ($accession, $matched) = get_accn($name);
     if ($matched) {
         if ( !$accession ) {
@@ -953,7 +958,7 @@ sub get_keys {
             logger("Unsure if file containing $name is formatted correctly. Check your input to be sure you submitted the correct file.\n");
             $title = $accession;
         }
-        print $keyfile join( "\t",
+        print $key join( "\t",
                              $accession, 'NULL', 'NULL', $title,
                              $title,     'NULL', $accession, $title,
                              'NULL',     'NULL', 'NULL',     'NULL',
