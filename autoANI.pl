@@ -89,8 +89,8 @@ if ( !$scriptdir ) {
     $elinkpath   = $sdir . 'auto_edirect.pl';
 }
 
-my $version = '2.0.0';
-my $date = 'December 6, 2016';
+my $version = '2.0.1';
+my $date = 'December 21, 2016';
 my $vhelp;
 
 my $signal = GetOptions(
@@ -958,9 +958,11 @@ sub get_keys {
             logger("Unsure if file containing $name is formatted correctly. Check your input to be sure you submitted the correct file.\n");
             $title = $accession;
         }
+#Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
+#                  $match        0        1      2    3    4         5         6       7      8          9           10
         print $key join( "\t",
                              $accession, 'NULL', 'NULL', $title,
-                             $title,     'NULL', $accession, $title,
+                             'NULL', $accession, $title,
                              'NULL',     'NULL', 'NULL',     'NULL',
                              'NULL')
           . "\n";

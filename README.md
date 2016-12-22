@@ -146,6 +146,8 @@ Use the included download\_genomes.pl script to download genomes from NCBI for i
 
 # History
 
+v2.0.1 - 2016-12-21 - Bug fix for re-naming local strains. Must re-download software. Re-run any old analyses with the -keys option to fix the problem.
+
 v2.0.0 - 2016-12-06 - Major update. No longer requires Bio::DB::EUtilities. Not compatible with previous version.
 
 v1.3.0 - 2016-11-15 - Now throw away chunks at end of contigs (those that would be <1kb). Should improve accuracy for highly fragmented genomes.
