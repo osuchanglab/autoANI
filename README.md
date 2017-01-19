@@ -142,7 +142,7 @@ Output is printed (to STDOUT by default) with the query as each row and the subj
 
 # Downloading Genomes from NCBI
 
-Use the included download\_genomes.pl script to download genomes from NCBI for inclusion in the pipeline. Use the format `scripts/download_genomes.pl -type ani Pseudomonas-download` to download, for example, the Pseudomonas genomes available in NCBI. Any term from the NCBI taxonomy database is acceptable. The script also provides the count of the number of genomes that will be downloaded, as well as an estimate of the disk usage required after downloading the sequence. Leave the -download flag off to see the number of genomes and size without downloading; this is also useful for checking to see if your taxonomy term is valid.
+Use the included download\_genomes.pl script to download genomes from NCBI for inclusion in the pipeline. Use the format `scripts/download_genomes.pl -type ani Pseudomonas -download` to download, for example, the Pseudomonas genomes available in NCBI. Any term from the NCBI taxonomy database is acceptable. The script also provides the count of the number of genomes that will be downloaded, as well as an estimate of the disk usage required after downloading the sequence. Leave the -download flag off to see the number of genomes and size without downloading; this is also useful for checking to see if your taxonomy term is valid.
 
 # History
 
