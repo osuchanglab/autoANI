@@ -58,7 +58,11 @@ if ($type !~ /mlsa|ani/) {
     exit(-1);
 }
 
-my $query = qq{'$term\[ORGANISM\]'};
+my $query = '';
+
+if ( $term !~ /ORGANISM/ ) {
+    $query = qq{'$term\[ORGANISM\]'};
+} 
 
 my $assembly = `$esearch -db genome -query $query | $elink -batch -target assembly`;
 my $count = getCount($assembly);
