@@ -150,6 +150,7 @@ if ( $type =~ /ani/ ) {
             $strain =~ s/\(//g;
             $strain =~ s/\)//g;
             $strain =~ s/://g;
+            $strain =~ s/;//g;
         }
         my $outname = '';
         if ($fmt =~ /full/ || $species =~ /sp\./) {
