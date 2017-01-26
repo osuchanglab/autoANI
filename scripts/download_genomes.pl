@@ -9,6 +9,7 @@ my $type = ''; # Options are mlsa or ani
 my $fmt  = 'abbr';
 my $dl = 0;
 my $debug = 0;
+my $rep = 0;
 
 if (scalar(@ARGV) == 0) {
     printHelp();
@@ -20,7 +21,8 @@ my $signal = GetOptions(
                          'f|format=s' => \$fmt,
                          'd|download' => \$dl,
                          'h|help'   => \$help,
-                         'debug'    => \$debug
+                         'debug'    => \$debug,
+                         'r|rep'    => \$rep
                        );
 
 my $term = shift;
@@ -29,6 +31,7 @@ my $edirectpath = ''; # Set to /path/to/edirect/ if not in $PATH
 my $esearch = $edirectpath . 'esearch';
 my $efetch  = $edirectpath . 'efetch';
 my $xtract  = $edirectpath . 'xtract';
+my $efilter = $edirectpath . 'efilter';
 my $elink   = $edirectpath . 'elink';
 
 if ($help || !$term) {
@@ -58,13 +61,23 @@ if ($type !~ /mlsa|ani/) {
     exit(-1);
 }
 
-my $query = '';
+my $query = qq{$term};
 
 if ( $term !~ /ORGANISM/ ) {
-    $query = qq{'$term\[ORGANISM\]'};
+    $query = qq{$query\[ORGANISM\]};
 } 
 
-my $assembly = `$esearch -db genome -query $query | $elink -batch -target assembly`;
+#Can add other things to query here
+
+$query = qq{'$query'};
+
+my $command = "$esearch -db genome -query $query | $elink -batch -target assembly";
+
+if ( $rep ) {
+    $command .= " | $efilter -query 'representative\[Properties\]'";
+}
+
+my $assembly = `$command`;
 my $count = getCount($assembly);
 print STDERR "Found $count genomes to download.\n";
 print STDERR "Expect ".($count*5)."MB to ".($count*7)."MB of data for download.\n";
@@ -214,7 +227,7 @@ sub getCount {
 
 sub printHelp {
     print STDERR "Please re-submit command with this syntax:\n";
-    print STDERR "$0 -type [mlsa or ani] -format [format] [NCBI Taxonomy term]\n";
+    print STDERR "$0 -type [mlsa or ani] -format [format] -rep [NCBI Taxonomy term]\n";
     print STDERR "Acceptable output formats are full, abbr (default), and strain\n";
     print STDERR "Example: $0 -type mlsa -format abbr Pseudomonas\n";
     exit();
