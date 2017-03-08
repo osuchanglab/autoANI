@@ -91,6 +91,10 @@ $counter{'epost'} = epost(\@idmatch,$history);
 
 logger("Successfully posted $counter{'epost'} accessions.\n");
 
+if (scalar(@idmatch) != $counter{'epost'}) {
+    logger("ERROR: Unable to post all accessions properly. Some strains may be excluded!\n");
+}
+
 #This section will become extraneous once accession.versions are acceptable.
 
 ($accn, $gis) = gimatch($history,$counter{'epost'});
@@ -105,65 +109,39 @@ my @command = ( "cat $history |",
 my $command = join(" ", @command);
 my @output = `$command`;
 
-logger("Parsing genbank metadata.\n");
+parseMetadata(@output);
 
-foreach my $item (@output) {
-    chomp($item);
-    my ($acc,$organism,$strain,$source,$xref,$country,$cc,$date) = split("\t",$item);
-    my $gi = $gis->{$acc};
-    if (! $gi) {
-        logger("Unable to find GI for accession $acc. Skipping.\n");
-        next;
-    }
-    $cc =~ s/:/ / if $cc =~ /:/;
-    my $taxid;
-    if ($xref =~ /taxon/) {
-        my $junk;
-        ($junk, $taxid) = split(":",$xref);
-    } else {
-        $taxid = '-';
-    }
-    my $gb_name;
-    if ( $organism =~ /$strain/ ) {
-        $gb_name = $organism;
-    } else {
-        if ( $strain ne '-' ) {
-            $gb_name = join( " ", $organism, $strain );
-        } elsif ( $cc ne '-' ) { 
-            $gb_name = join( " ", $organism, $cc );
-        } 
-    }
-
-    $names{$gi} = $organism;
-    $country{$gi} = $country;
-    $source{$gi}  = $source;
-    $gb_name{$gi} = $gb_name;
-    $strain{$gi}  = $strain;
-    $culture{$gi} = $cc;
-    $taxon{$gi} = $taxid;
-    $year{$gi} = $date;
-}
 
 #This section will use accession instead of GI numbers
 
 @output = assemLinks($history);
 
 my %retry;
+my %seen;
 
 logger("Parsing links to Assembly DB.\n");
 
 foreach my $item (@output) {
     chomp($item);
     my ($gi, $assemid) = split("\t",$item);
+    my $acc = $accn->{$gi};
+    $seen{$acc} = 1;
     if (!$assemid) {
-        my $acc = $accn->{$gi};
         $retry{$idmatch{$acc}} = 1;
     } else {
         $assem{$gi} = $assemid;
     }
 }
 
+foreach my $item (@idmatch) {
+    if (!exists($seen{$item})) {
+        $retry{$idmatch{$item}} = 1;
+    }
+}
+
 my $rethis = 'retryhistory';
+my $redohis = 'redohistory';
+my %redo;
 
 if (%retry) {
 
@@ -186,6 +164,14 @@ if (%retry) {
         }   
         my $master = getMaster($acc);
         my $master_gi = $gis->{$master};
+        #This is extremely unlikely.
+        if ( ! $master_gi ) {
+            $gis->{$master} = $gi;
+            $master_gi = $gi;
+            $accn->{$gi} = $acc;
+            $gis->{$acc} = $gi;
+            $redo{$gi} = 1;
+        }
         if ($assemid eq '-') {
             $assem{$master_gi} = '-';
         } else {
@@ -193,6 +179,21 @@ if (%retry) {
         }
     }
 
+}
+
+if (%redo) {
+
+    my $ids = join(',',sort(keys(%redo)));
+
+    logger("Final retry for ".scalar(keys(%redo))." accessions. ($ids)\n");
+
+    @command = (
+                    "$efetch -db nuccore -format gbc -mode xml -seq_start 1 -seq_stop 2 -id $ids |",
+                    "$xtract -insd source organism strain isolation_source db_xref country culture_collection collection_date"
+                );
+    $command = join(" ",@command); 
+    @output = `$command`;
+    parseMetadata(@output);
 }
 
 logger("Mapping and printing all data.\n");
@@ -293,6 +294,49 @@ sub assemLinks {
     my @out = `$cmd`;
 
     return(@out);
+}
+
+sub parseMetadata {
+
+    logger("Parsing genbank metadata.\n");
+
+    foreach my $item (@_) {
+        chomp($item);
+        my ($acc,$organism,$strain,$source,$xref,$country,$cc,$date) = split("\t",$item);
+        my $gi = $gis->{$acc};
+        if (! $gi) {
+            logger("Unable to find GI for accession $acc. Skipping.\n");
+            next;
+        }
+        $cc =~ s/:/ / if $cc =~ /:/;
+        my $taxid;
+        if ($xref =~ /taxon/) {
+            my $junk;
+            ($junk, $taxid) = split(":",$xref);
+        } else {
+            $taxid = '-';
+        }
+        my $gb_name;
+        if ( $organism =~ /$strain/ ) {
+            $gb_name = $organism;
+        } else {
+            if ( $strain ne '-' ) {
+                $gb_name = join( " ", $organism, $strain );
+            } elsif ( $cc ne '-' ) { 
+                $gb_name = join( " ", $organism, $cc );
+            } 
+        }
+
+        $names{$gi} = $organism;
+        $country{$gi} = $country;
+        $source{$gi}  = $source;
+        $gb_name{$gi} = $gb_name;
+        $strain{$gi}  = $strain;
+        $culture{$gi} = $cc;
+        $taxon{$gi} = $taxid;
+        $year{$gi} = $date;
+    }
+
 }
 
 sub getMaster {
