@@ -194,7 +194,7 @@ if ( $type =~ /ani/i ) {
 
         #print $outname."\n";
     }
-} elsif ($type =~ /mlsa/i {
+} elsif ($type =~ /mlsa/i ) {
     # elink -target nuccore -name assembly_nuccore_insdc | efetch -format fasta > ! rhizobiaceae.fasta
     my $outname = "$term.fasta";
     if (-s "$outname") {
