@@ -54,7 +54,7 @@ if ( $fmt !~ /abbr|full|strain/ ) {
     exit(-1);
 }
 
-if ($type !~ /mlsa|ani/) {
+if ($type !~ /mlsa|ani/i) {
     print STDERR "Type: '$type' is invalid or missing.\n";
     print STDERR "Valid types are mlsa or ani.\n";
     print STDERR "Please check your settings and try again.\n";
@@ -63,7 +63,7 @@ if ($type !~ /mlsa|ani/) {
 
 my $query = qq{$term};
 
-if ( $term !~ /ORGANISM/ ) {
+if ( $term !~ /ORGANISM|ORGN/ ) {
     $query = qq{$query\[ORGANISM\]};
 } 
 
@@ -100,7 +100,7 @@ close($historyfh);
 
 my $unknown = 1; #Counter for organisms with no strain name
 
-if ( $type =~ /ani/ ) {
+if ( $type =~ /ani/i ) {
     my @command = ("cat assemlinks |",
                    "efetch -format docsum |",
                    "xtract -pattern DocumentSummary",
@@ -194,7 +194,7 @@ if ( $type =~ /ani/ ) {
 
         #print $outname."\n";
     }
-} else {
+} elsif ($type =~ /mlsa/i {
     # elink -target nuccore -name assembly_nuccore_insdc | efetch -format fasta > ! rhizobiaceae.fasta
     my $outname = "$term.fasta";
     if (-s "$outname") {
