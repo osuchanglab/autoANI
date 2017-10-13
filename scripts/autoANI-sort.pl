@@ -5,7 +5,7 @@
 #
 # autoANI-sort.pl - A script to sort the output from autoANI.pl
 # This allows the user to control the reference genome in the output
-# and sort all of the values in a 2 dimensional matrix.  The generated 
+# and sort all of the values in a 2 dimensional matrix.  The generated
 # output can then be visualized using spreadsheet software in a
 # meaningful way.
 #
@@ -123,7 +123,7 @@ foreach my $genome ( keys %hits ) {
     foreach my $subject ( keys %hits) {
         next if $genome eq $subject;
         $n += $hits{$genome}{$subject};
-    }  
+    }
     my $avg = $n/$total;
     if ( $avg <= $hitlimit) {
         push(@hitfilter,$genome);
@@ -143,15 +143,15 @@ if (scalar(@hitfilter) > 0) {
 
 my @neworder;
 push(@neworder, $ref);
-my @sortorder =  sort { $values{$ref}{$b} <=> $values{$ref}{$a} } keys %{$values{$ref}};
-my $sortref = shift @sortorder;
-%notseen = map { $_ => 1 } @sortorder;
-@sortorder = ();
+#my @sortorder =  sort { $values{$ref}{$b} <=> $values{$ref}{$a} } keys %{$values{$ref}};
+#my $sortref = shift @sortorder;
+%notseen = map { $_ => 1 } sort keys %{$values{$ref}};
+#@sortorder = ();
 while ( %notseen ) {
-   @sortorder = sort { $values{$sortref}{$b} <=> $values{$sortref}{$a} } keys %notseen;  
-   $sortref = shift (@sortorder);
-   push(@neworder, $sortref);
-   delete($notseen{$sortref});
+   my @sortorder = sort { $values{$ref}{$b} <=> $values{$ref}{$a} } keys %notseen;
+   $ref = shift (@sortorder);
+   push(@neworder, $ref);
+   delete($notseen{$ref});
 }
 
 print join("\t","",@neworder)."\n";
@@ -190,7 +190,7 @@ sub getData {
             my $line = $_;
             chomp($line);
             my ( $name, @data ) = split( "\t", $line );
-            if (scalar(@data) != scalar(@order) ) {
+            if ( scalar(@data) != scalar(@order) ) {
                 print STDERR "Missing data point for $name. Check to make sure all of the data is in this row and is formatted correctly\n";
                 exit;
             }
