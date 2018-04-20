@@ -474,6 +474,8 @@ if ( $finish == 0 ) {
     $time = localtime();
     logger("BLAST searches started at $time\n");
 
+    my @commands;
+
     foreach my $querypath (@chunked) {
         my ( $vol, $dir, $query ) = File::Spec->splitpath($querypath);
         foreach my $dbpath (@dbs) {
@@ -485,7 +487,7 @@ if ( $finish == 0 ) {
                 my $output = "./blast/";
                 $output .= $query . "_vs_" . $subject . ".tab";
                 if ( -s $output ) {
-                    logger("BLAST output $output already found!\n");
+                    #logger("BLAST output $output already found!\n");
                 } else {
                     if ( -e $output ) {
                         `rm -f $output`;
@@ -538,14 +540,17 @@ if ( $finish == 0 ) {
                                             "-gapopen",         5,        
                                             "-gapextend",       2,
                                             "-out",             $output);
-                        logger("Running BLAST command through SGE:\n@command\n");
-                        @command = join( " ",
-                                         "SGE_Batch",                "-r",
-                                         "sge.${query}_vs_$subject", "-q",
-                                         $queue,                      "-c",
-                                         qq{"@command"},             "-Q" );
-                        my @runoutput = `@command`;
-                        sleep($stime);
+
+                        #logger("Running BLAST command through SGE:\n@command\n");
+                        my $command = join( " ", qq{@command} );
+                        push(@commands, $command);
+                        #                        @command = join( " ",
+                        #                 "SGE_Batch",                "-r",
+                        #                 "sge.${query}_vs_$subject", "-q",
+                        #                 $queue,                      "-c",
+                        #                 qq{"@command"},             "-Q" );
+                        #my @runoutput = `@command`;
+                        #sleep($stime);
                     }
                 }
 
@@ -554,6 +559,16 @@ if ( $finish == 0 ) {
         }
     }
     $pm->wait_all_children;
+
+    if ($sge) {
+        open my $cmdfh, ">", "ani.sge" or die "Unable to open ani.sge : $!\n";
+        print $cmdfh join("\n", @commands);
+        close $cmdfh;
+        my @command = ( "SGE_Array", "-r", "sge.autoani",
+                        "-q", $queue, "-c", "./ani.sge",
+                        "-b", 100);
+        system(@command);
+    }
 
     $time = localtime();
     logger("BLAST searches completed at $time\n");
