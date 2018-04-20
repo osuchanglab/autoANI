@@ -159,7 +159,7 @@ foreach my $genome (@neworder) {
     print $genome;
     foreach my $genome2 (@neworder) {
         if ($genome eq $genome2) {
-            print "\t"."----------";
+            print "\t"."100";
         } else {
             if ( exists($values{$genome}{$genome2}) ) {
                 print "\t".$values{$genome}{$genome2};
