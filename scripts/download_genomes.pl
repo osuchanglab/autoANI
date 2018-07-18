@@ -102,8 +102,8 @@ my $unknown = 1; #Counter for organisms with no strain name
 
 if ( $type =~ /ani/i ) {
     my @command = ("cat assemlinks |",
-                   "efetch -format docsum |",
-                   "xtract -pattern DocumentSummary",
+                   "$efetch -format docsum |",
+                   "$xtract -pattern DocumentSummary",
                    "-block DocumentSummary -element",
                    "Genbank",
                    "AssemblyName",
@@ -204,8 +204,8 @@ if ( $type =~ /ani/i ) {
         exit(0);
     }
     my @command = ('cat assemlinks |',
-                   'elink -batch -target nuccore -name assembly_nuccore_insdc |',
-                   "efetch -format fasta > $outname");
+                   "$elink -batch -target nuccore -name assembly_nuccore_insdc |",
+                   "$efetch -format fasta > $outname");
     my $command = join(" ", @command);
     system($command) == 0 or die "Unable to download $term genome sequences!\n";
     if ( ! -s "$term.fasta" ) {
