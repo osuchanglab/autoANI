@@ -65,7 +65,7 @@ my $query = qq{$term};
 
 if ( $term !~ /ORGANISM|ORGN/ ) {
     $query = qq{$query\[ORGANISM\]};
-} 
+}
 
 #Can add other things to query here
 
@@ -167,6 +167,7 @@ if ( $type =~ /ani/i ) {
         $assemname =~ s/ /_/g;
         my $ftp = $data[2];
         my $filename = join('_',$gbassem,$assemname,'genomic.fna.gz');
+        $filename =~ s/,//g;
         my $newfile = $filename;
         $newfile =~ s/\.gz$//;
         if ($debug) {
